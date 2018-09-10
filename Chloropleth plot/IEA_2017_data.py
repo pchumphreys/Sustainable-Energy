@@ -3,10 +3,9 @@ from incf.countryutils import transformations
 import copy
 import pickle
 import os
+from IPython.display import display, Markdown
 
 import country_helper_functions as chf
-
-from IPython.display import display, Markdown
 
 def printmd(string):
     display(Markdown(string))
@@ -15,41 +14,43 @@ base_tmp_dir = os.path.join(os.getenv('TEST_TMPDIR', '/tmp'),'chloropleth')
 if not os.path.exists(base_tmp_dir):
     os.makedirs(base_tmp_dir)
 
-class IEA_data():
+class IEA_handler():
 
-    def __init__(self):
-        self.country_iso3_list = chf.countries_keyed_by_code.keys()
+    def __init__(self, force_reload = False):
 
-        self.load_IEA_data()
-        self.parse_IEA_countries()
+        self.load_IEA_data(force_reload = force_reload)
+        self.parse_IEA_countries(force_reload = force_reload)
 
-        self.Products = self.df1.Product.unique()
-        self.Flows = self.df1.Flow.unique()
+        self.Products = self.IEA_data.Product.unique()
+        self.Flows = self.IEA_data.Flow.unique()
         
-    def load_IEA_data(self):
+    def load_IEA_data(self, force_reload = False):
         processed_filename = os.path.join(base_tmp_dir,'IEA_EnergyData_2017.pkl')
         try:
-            self.df1 = pd.read_pickle(processed_filename) 
+            if force_reload:
+                raise
+            self.IEA_data = pd.read_pickle(processed_filename) 
         except:
             datafile = 'raw_data/IEA_HeadlineEnergyData_2017.xlsx'
             xl = pd.ExcelFile(datafile)
-            self.df1 = xl.parse('TimeSeries_1971-2016',skiprows=1)
-            self.df1.to_pickle(processed_filename)
+            self.IEA_data = xl.parse('TimeSeries_1971-2016',skiprows=1)
+            self.IEA_data.to_pickle(processed_filename)
 
         self.years = range(1971,2017)
-    
-    def print_summary(self):
-        print("Loaded the IEA 2017 dataset, which is divided into the following Products and Flows")
-        printmd("**Products**")
-        for name in self.Products : print name 
-        printmd("**Flows**")
-        for name in self.Flows: print name 
 
-    def parse_IEA_countries(self):
+    def parse_IEA_countries(self,force_reload = False):
         processed_filename = os.path.join(base_tmp_dir,'IEA_countries_2017.pkl')
         try:
+            if force_reload:
+                raise
             with open(processed_filename, "rb") as f:
-                (self.iea_specified_country_codes, self.iea_country_codes_to_named_region, self.african_country_codes, self.non_oecd_americas_country_codes) = pickle.load(f) 
+                (self.iea_specified_country_codes,
+                 self.iea_country_codes_to_named_region,
+                 self.middle_eastern_country_codes,
+                 self.non_OECD_Eurasian_country_codes,
+                 self.non_OECD_asia_country_codes,
+                 self.african_country_codes,
+                 self.non_oecd_americas_country_codes) = pickle.load(f) 
         except:
                 
             # Sort the IEA data in some not insane way
@@ -57,12 +58,12 @@ class IEA_data():
             non_OECD_Eurasian_countries = ['Albania', 'Armenia', 'Azerbaijan', 'Belarus', 'Bosnia and Herzegovina', 'Bulgaria', 'Croatia', 'Cyprus', 'Macedonia', 'Georgia', 'Gibraltar', 'Kazakhstan', 'Kyrgyzstan', 'Lithuania', 'Malta', 'Moldova', 'Montenegro', 'Romania', 'Russian Federation', 'Serbia', 'Tajikistan', 'Turkmenistan', 'Ukraine', 'Uzbekistan']
             non_OECD_asia = ['Bangladesh', 'Brunei Darussalam', 'Cambodia', 'Democratic People\xe2\x80\x99s Republic of Korea', 'India', 'Indonesia', 'Malaysia', 'Mongolia', 'Myanmar', 'Nepal', 'Pakistan', 'Philippines', 'Singapore', 'Sri Lanka', 'Taiwan, province of china', 'Thailand', 'Vietnam', 'Afghanistan', 'Bhutan', 'Cambodia', 'Cook Islands', 'Fiji', 'French Polynesia', 'Kiribati', "Lao People's Democratic Republic", 'Macao', 'Maldives', 'Mongolia', 'New Caledonia', 'Palau', 'Papua New Guinea', 'Samoa', 'Solomon Islands', 'Tonga', 'Vanuatu']
 
-            middle_eastern_country_codes = [chf.find_country_by_name(country) for country in middle_eastern_countries]
-            non_OECD_Eurasian_country_codes = [chf.find_country_by_name(country) for country in non_OECD_Eurasian_countries]
-            non_OECD_asia_country_codes = [chf.find_country_by_name(country) for country in non_OECD_asia]
+            self.middle_eastern_country_codes = [chf.find_country_by_name(country) for country in middle_eastern_countries]
+            self.non_OECD_Eurasian_country_codes = [chf.find_country_by_name(country) for country in non_OECD_Eurasian_countries]
+            self.non_OECD_asia_country_codes = [chf.find_country_by_name(country) for country in non_OECD_asia]
 
             self.iea_specified_country_codes = {}
-            for country in self.df1.Country.unique().tolist():
+            for country in self.IEA_data.Country.unique().tolist():
                 try:
                     code = chf.find_country_by_name(country)
                     self.iea_specified_country_codes[code] = country
@@ -76,13 +77,13 @@ class IEA_data():
             self.iea_country_codes_to_named_region = copy.deepcopy(self.iea_specified_country_codes)
             self.iea_country_codes_to_named_region[u'HKG'] = "People's Republic of China"
 
-            self.iea_country_codes_to_named_region.update({code:'Middle East' for code in middle_eastern_country_codes})
-            self.iea_country_codes_to_named_region.update({code:'Non-OECD Europe and Eurasia' for code in non_OECD_Eurasian_country_codes})
-            self.iea_country_codes_to_named_region.update({code:'Non-OECD Asia' for code in non_OECD_asia_country_codes})
+            self.iea_country_codes_to_named_region.update({code:'Middle East' for code in self.middle_eastern_country_codes})
+            self.iea_country_codes_to_named_region.update({code:'Non-OECD Europe and Eurasia' for code in self.non_OECD_Eurasian_country_codes})
+            self.iea_country_codes_to_named_region.update({code:'Non-OECD Asia' for code in self.non_OECD_asia_country_codes})
 
             self.african_country_codes = []
             self.non_oecd_americas_country_codes = []
-            for iso3 in self.country_iso3_list:
+            for iso3 in chf.country_iso3_list:
                 if iso3 not in self.iea_country_codes_to_named_region:
                     try:
                         cont_code = transformations.cca_to_ctca2(iso3)
@@ -95,17 +96,24 @@ class IEA_data():
                     except:
                         pass
             with open(processed_filename, 'wb') as f:
-                pickle.dump((self.iea_specified_country_codes, self.iea_country_codes_to_named_region, self.african_country_codes, self.non_oecd_americas_country_codes),f)
+                data_vars = (self.iea_specified_country_codes,
+                             self.iea_country_codes_to_named_region,
+                             self.middle_eastern_country_codes,
+                             self.non_OECD_Eurasian_country_codes,
+                             self.non_OECD_asia_country_codes,
+                             self.african_country_codes,
+                             self.non_oecd_americas_country_codes)
 
+                pickle.dump(data_vars,f)
 
+        
+    def print_summary(self):
+        print("Loaded the IEA 2017 dataset, which is divided into the following Products and Flows")
+        printmd("**Products**")
+        for name in self.Products : print name 
+        printmd("**Flows**")
+        for name in self.Flows: print name 
 
-    def get_IEA_data_for_countries(self,database, country_code, year): 
-        try:
-            region = self.iea_country_codes_to_named_region[country_code]
-        except:
-            raise ValueError("Couldn't find country data for %s" % self.iea_country_codes_to_named_region[country_code])
-
-        return database.loc[region,year]
 
 
 

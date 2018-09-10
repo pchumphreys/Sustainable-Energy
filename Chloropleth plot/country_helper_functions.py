@@ -4,6 +4,7 @@ import jellyfish
 
 countries_keyed_by_name = {(country.name.lower()):country.alpha_3 for country in list(pycountry.countries)}
 countries_keyed_by_code = {country.alpha_3:(country.name.lower()) for country in list(pycountry.countries)}
+country_iso3_list = countries_keyed_by_code.keys()
 
 def correct_country_mispelling(s):
     with open("misc/ISO3166ErrorDictionary.csv", "rb") as info:
