@@ -1,6 +1,6 @@
 ### Code to make sweet chloropleth plots of the world!
 
-![Chloropleth](figs/chloropleth_world_electricity)
+![Chloropleth](figs/chloropleth_world_electricity.png)
 
 Here I am pulling data from the IEA 2017 report, allowing me to look at different forms of energy consumption and production across the world. 
 
